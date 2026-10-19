@@ -1,0 +1,8 @@
+{
+  "name": "Dashboard Timeline Marketing Bengkelin",
+  "description": "Dashboard manajemen dan pemantauan timeline marketing Bengkelin periode 20 Oktober – 18 November 2026.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
