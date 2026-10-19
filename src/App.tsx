@@ -188,11 +188,26 @@ export default function App() {
     showToast(`Target bengkel "${wsWithId.name}" berhasil ditambahkan.`);
   };
 
+  const handleUpdateWorkshop = (updatedWorkshop: WorkshopTarget) => {
+    setWorkshops((prev) =>
+      prev.map((workshop) => (workshop.id === updatedWorkshop.id ? updatedWorkshop : workshop))
+    );
+    showToast(`Perubahan target bengkel "${updatedWorkshop.name}" tersimpan.`);
+  };
+
   const handleUpdateWorkshopStatus = (id: string, status: WorkshopTarget['visitStatus']) => {
     setWorkshops((prev) =>
       prev.map((w) => (w.id === id ? { ...w, visitStatus: status } : w))
     );
     showToast(`Status bengkel diperbarui menjadi "${status}".`);
+  };
+
+  const handleDeleteWorkshop = (id: string) => {
+    const workshop = workshops.find((item) => item.id === id);
+    setWorkshops((prev) => prev.filter((item) => item.id !== id));
+    if (workshop) {
+      showToast(`Target bengkel "${workshop.name}" berhasil dihapus.`);
+    }
   };
 
   // Weekly Evaluation Handlers
@@ -290,7 +305,9 @@ export default function App() {
               <WorkshopTargetsView
                 workshops={workshops}
                 onAddWorkshop={handleAddWorkshop}
+                onUpdateWorkshop={handleUpdateWorkshop}
                 onUpdateWorkshopStatus={handleUpdateWorkshopStatus}
+                onDeleteWorkshop={handleDeleteWorkshop}
               />
             )}
 

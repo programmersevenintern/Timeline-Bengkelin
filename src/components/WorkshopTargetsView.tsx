@@ -12,37 +12,48 @@ import {
   Filter,
   User,
   ChevronDown,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { WorkshopTarget } from '../types/marketing';
 
 interface WorkshopTargetsViewProps {
   workshops: WorkshopTarget[];
   onAddWorkshop: (workshop: Omit<WorkshopTarget, 'id'>) => void;
+  onUpdateWorkshop: (workshop: WorkshopTarget) => void;
   onUpdateWorkshopStatus: (id: string, status: WorkshopTarget['visitStatus']) => void;
+  onDeleteWorkshop: (id: string) => void;
 }
+
+const createEmptyWorkshopForm = (): Omit<WorkshopTarget, 'id'> => ({
+  name: '',
+  owner: '',
+  phone: '',
+  address: '',
+  district: '',
+  type: 'Motor',
+  visitStatus: 'Belum Dikunjungi',
+  notes: '',
+  visitDate: '',
+});
 
 export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
   workshops,
   onAddWorkshop,
+  onUpdateWorkshop,
   onUpdateWorkshopStatus,
+  onDeleteWorkshop,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
-
-  // New workshop form state
-  const [formData, setFormData] = useState({
-    name: '',
-    owner: '',
-    phone: '',
-    address: '',
-    district: '',
-    type: 'Motor' as WorkshopTarget['type'],
-    visitStatus: 'Belum Dikunjungi' as WorkshopTarget['visitStatus'],
-    notes: '',
-    visitDate: '',
-  });
+  const [editingWorkshop, setEditingWorkshop] = useState<WorkshopTarget | null>(null);
+  const [workshopToDelete, setWorkshopToDelete] = useState<WorkshopTarget | null>(null);
+  const [formData, setFormData] = useState<Omit<WorkshopTarget, 'id'>>(
+    createEmptyWorkshopForm
+  );
 
   // Filtered workshops
   const filteredWorkshops = useMemo(() => {
@@ -71,22 +82,48 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
   const scheduledCount = workshops.filter((w) => w.visitStatus === 'Terjadwal').length;
   const interestedCount = workshops.filter((w) => w.visitStatus === 'Tertarik Demo').length;
 
-  const handleSubmitNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.address.trim()) return;
-    onAddWorkshop(formData);
+  const openAddModal = () => {
+    setEditingWorkshop(null);
+    setFormData(createEmptyWorkshopForm());
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (workshop: WorkshopTarget) => {
+    setEditingWorkshop(workshop);
     setFormData({
-      name: '',
-      owner: '',
-      phone: '',
-      address: '',
-      district: '',
-      type: 'Motor',
-      visitStatus: 'Belum Dikunjungi',
-      notes: '',
-      visitDate: '',
+      name: workshop.name,
+      owner: workshop.owner,
+      phone: workshop.phone,
+      address: workshop.address,
+      district: workshop.district,
+      type: workshop.type,
+      visitStatus: workshop.visitStatus,
+      notes: workshop.notes,
+      visitDate: workshop.visitDate ?? '',
     });
+    setShowAddModal(true);
+  };
+
+  const closeWorkshopModal = () => {
     setShowAddModal(false);
+    setEditingWorkshop(null);
+  };
+
+  const handleSubmitWorkshop = (e: React.FormEvent) => {
+    e.preventDefault();
+    const workshop = {
+      ...formData,
+      name: formData.name.trim(),
+      address: formData.address.trim(),
+    };
+    if (!workshop.name || !workshop.address) return;
+
+    if (editingWorkshop) {
+      onUpdateWorkshop({ ...workshop, id: editingWorkshop.id });
+    } else {
+      onAddWorkshop(workshop);
+    }
+    closeWorkshopModal();
   };
 
   const getStatusStyle = (st: WorkshopTarget['visitStatus']) => {
@@ -162,7 +199,7 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={openAddModal}
             className="w-full mt-2 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700 transition-colors shadow-2xs"
           >
             <Plus className="w-4 h-4" />
@@ -227,12 +264,13 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
                 <th className="py-3 px-3.5 min-w-[220px]">Alamat &amp; Lokasi</th>
                 <th className="py-3 px-3.5 whitespace-nowrap min-w-[140px]">Status Kunjungan</th>
                 <th className="py-3 px-3.5 min-w-[200px]">Catatan Kebutuhan</th>
+                <th className="py-3 px-3.5 whitespace-nowrap text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredWorkshops.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
                     Tidak ada bengkel yang sesuai kriteria pencarian.
                   </td>
                 </tr>
@@ -311,6 +349,29 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
                     <td className="py-3.5 px-3.5 text-xs text-slate-600 leading-relaxed">
                       {ws.notes || '-'}
                     </td>
+
+                    <td className="py-3.5 px-3.5 whitespace-nowrap text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(ws)}
+                          aria-label={`Edit ${ws.name}`}
+                          title="Edit target bengkel"
+                          className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWorkshopToDelete(ws)}
+                          aria-label={`Hapus ${ws.name}`}
+                          title="Hapus target bengkel"
+                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -319,24 +380,25 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
         </div>
       </div>
 
-      {/* Add Workshop Modal */}
+      {/* Add / Edit Workshop Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">
-                Tambah Target Bengkel Sasaran
+                {editingWorkshop ? 'Edit Target Bengkel' : 'Tambah Target Bengkel Sasaran'}
               </h3>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                onClick={closeWorkshopModal}
+                aria-label="Tutup form"
+                className="p-1 text-slate-400 hover:text-slate-600"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitNew} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitWorkshop} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Nama Bengkel *
@@ -373,6 +435,42 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="Contoh: 0812-xxxx-xxxx"
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Status Kunjungan
+                  </label>
+                  <select
+                    value={formData.visitStatus}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        visitStatus: e.target.value as WorkshopTarget['visitStatus'],
+                      })
+                    }
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-rose-500"
+                  >
+                    <option value="Belum Dikunjungi">Belum Dikunjungi</option>
+                    <option value="Terjadwal">Terjadwal</option>
+                    <option value="Sudah Dikunjungi">Sudah Dikunjungi</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Tertarik Demo">Tertarik Demo</option>
+                    <option value="Onboarding">Onboarding</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tanggal Kunjungan
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.visitDate}
+                    onChange={(e) => setFormData({ ...formData, visitDate: e.target.value })}
                     className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-rose-500"
                   />
                 </div>
@@ -440,7 +538,7 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeWorkshopModal}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
                 >
                   Batal
@@ -449,10 +547,59 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
                   type="submit"
                   className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700"
                 >
-                  Simpan Target Bengkel
+                  {editingWorkshop ? 'Simpan Perubahan' : 'Simpan Target Bengkel'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {workshopToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-workshop-title"
+            className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
+          >
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 id="delete-workshop-title" className="text-base font-bold text-slate-900">
+                  Hapus Target Bengkel?
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Data yang dihapus tidak dapat dikembalikan.
+                </p>
+              </div>
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="text-sm font-bold text-slate-900">{workshopToDelete.name}</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  {workshopToDelete.address}
+                  {workshopToDelete.district ? `, Kec. ${workshopToDelete.district}` : ''}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setWorkshopToDelete(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteWorkshop(workshopToDelete.id);
+                    setWorkshopToDelete(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Hapus Bengkel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
