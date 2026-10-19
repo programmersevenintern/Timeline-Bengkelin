@@ -157,9 +157,15 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
             </span>
             <span className="text-xs text-slate-500 font-medium">/ 20–30 bengkel</span>
           </div>
-          <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
+          <div className={`mt-2 text-xs font-medium flex items-center gap-1 ${totalMapped >= 20 ? 'text-emerald-600' : 'text-slate-500'}`}>
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Target kuota terpenuhi (25 bengkel)</span>
+            <span>
+              {totalMapped === 0
+                ? 'Belum ada target bengkel'
+                : totalMapped < 20
+                  ? `Tambahkan ${20 - totalMapped} bengkel untuk kuota minimal`
+                  : 'Target kuota minimal terpenuhi'}
+            </span>
           </div>
         </div>
 

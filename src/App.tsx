@@ -46,10 +46,11 @@ export default function App() {
   // Workshop Targets State with localStorage persistence
   const [workshops, setWorkshops] = useState<WorkshopTarget[]>(() => {
     try {
-      const saved = localStorage.getItem('bengkelin_workshops_v1');
+      const saved = localStorage.getItem('bengkelin_workshops_v2');
       if (saved) {
         return JSON.parse(saved);
       }
+      localStorage.removeItem('bengkelin_workshops_v1');
     } catch (e) {
       console.error('Failed reading workshops from localStorage', e);
     }
@@ -80,7 +81,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('bengkelin_workshops_v1', JSON.stringify(workshops));
+      localStorage.setItem('bengkelin_workshops_v2', JSON.stringify(workshops));
     } catch (e) {
       console.error('Failed to save workshops to localStorage', e);
     }
@@ -230,6 +231,7 @@ export default function App() {
       setEvaluations(INITIAL_EVALUATIONS);
       localStorage.removeItem('bengkelin_activities_v1');
       localStorage.removeItem('bengkelin_workshops_v1');
+      localStorage.removeItem('bengkelin_workshops_v2');
       localStorage.removeItem('bengkelin_evaluations_v1');
       showToast('Seluruh data berhasil direset ke jadwal default 20 Okt – 18 Nov 2026.');
     }
