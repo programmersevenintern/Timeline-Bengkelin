@@ -1,24 +1,49 @@
 import React, { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
-import { DashboardOverview } from './components/DashboardOverview';
 import { TimelineTable } from './components/TimelineTable';
-import { CalendarView } from './components/CalendarView';
 import { WorkshopTargetsView } from './components/WorkshopTargetsView';
 import { WeeklyEvaluationView } from './components/WeeklyEvaluationView';
 import { ActivityModal } from './components/ActivityModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
-import { ActivityItem, WorkshopTarget, WeeklyEvaluation, ActivityStatus } from './types/marketing';
-import { INITIAL_ACTIVITIES, INITIAL_WORKSHOPS, INITIAL_EVALUATIONS } from './data/initialData';
-import { formatToIndonesianDate, formatIndonesianFull } from './utils/dateUtils';
+import { ActivityItem, WorkshopTarget, WeeklyEvaluation, ActivityStatus, SocialAccount } from './types/marketing';
+import { formatToIndonesianDate } from './utils/dateUtils';
 import { CheckCircle2, Info, X } from 'lucide-react';
+import { SocialAccountsView } from './components/SocialAccountsView';
+import { LoginView, SupabaseSetupView } from './components/LoginView';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
+
+interface SharedAppData {
+  activities: ActivityItem[];
+  workshops: WorkshopTarget[];
+  evaluations: WeeklyEvaluation[];
+  socialAccounts: SocialAccount[];
+}
+
+const isSharedAppData = (value: unknown): value is SharedAppData => {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return (
+    Array.isArray(data.activities) &&
+    Array.isArray(data.workshops) &&
+    Array.isArray(data.evaluations) &&
+    Array.isArray(data.socialAccounts)
+  );
+};
 
 export default function App() {
   // Navigation & UI States
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const [currentTab, setCurrentTab] = useState<NavTab>('timeline');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [dataReady, setDataReady] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'loading' | 'saving' | 'saved' | 'error'>('loading');
+  const [reloadDataKey, setReloadDataKey] = useState(0);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -30,70 +55,133 @@ export default function App() {
     }, 3500);
   };
 
-  // Activities State with localStorage persistence
-  const [activities, setActivities] = useState<ActivityItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('bengkelin_activities_v1');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Failed reading activities from localStorage', e);
-    }
-    return INITIAL_ACTIVITIES;
-  });
-
-  // Workshop Targets State with localStorage persistence
-  const [workshops, setWorkshops] = useState<WorkshopTarget[]>(() => {
-    try {
-      const saved = localStorage.getItem('bengkelin_workshops_v2');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-      localStorage.removeItem('bengkelin_workshops_v1');
-    } catch (e) {
-      console.error('Failed reading workshops from localStorage', e);
-    }
-    return INITIAL_WORKSHOPS;
-  });
-
-  // Weekly Evaluations State with localStorage persistence
-  const [evaluations, setEvaluations] = useState<WeeklyEvaluation[]>(() => {
-    try {
-      const saved = localStorage.getItem('bengkelin_evaluations_v1');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Failed reading evaluations from localStorage', e);
-    }
-    return INITIAL_EVALUATIONS;
-  });
-
-  // Save to localStorage when state changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('bengkelin_activities_v1', JSON.stringify(activities));
-    } catch (e) {
-      console.error('Failed to save activities to localStorage', e);
-    }
-  }, [activities]);
+  // Shared state is loaded from Supabase after authentication.
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [workshops, setWorkshops] = useState<WorkshopTarget[]>([]);
+  const [evaluations, setEvaluations] = useState<WeeklyEvaluation[]>([]);
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('bengkelin_workshops_v2', JSON.stringify(workshops));
-    } catch (e) {
-      console.error('Failed to save workshops to localStorage', e);
-    }
-  }, [workshops]);
+    if (!supabase) return;
+
+    let active = true;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setAuthUser(session?.user ?? null);
+      setAuthReady(true);
+      if (!session?.user) {
+        setDataReady(false);
+        setDataError(null);
+        setSyncStatus('loading');
+        setActivities([]);
+        setWorkshops([]);
+        setEvaluations([]);
+        setSocialAccounts([]);
+      }
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('Failed to restore Supabase session', error);
+          setDataError('Sesi login tidak dapat diperiksa. Muat ulang halaman atau login kembali.');
+        }
+        setAuthUser(data.session?.user ?? null);
+        setAuthReady(true);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        console.error('Failed to restore Supabase session', error);
+        setDataError('Sesi login tidak dapat diperiksa. Muat ulang halaman atau login kembali.');
+        setAuthReady(true);
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('bengkelin_evaluations_v1', JSON.stringify(evaluations));
-    } catch (e) {
-      console.error('Failed to save evaluations to localStorage', e);
-    }
-  }, [evaluations]);
+    if (!supabase || !authUser) return;
+    const client = supabase;
+
+    let active = true;
+    setDataReady(false);
+    setDataError(null);
+    setSyncStatus('loading');
+
+    const loadSharedData = async () => {
+      try {
+        const { data, error } = await client
+          .from('marketing_app_state')
+          .select('data')
+          .eq('id', 'shared')
+          .maybeSingle();
+        if (!active) return;
+        if (error) {
+          console.error('Failed to load shared app data from Supabase', error);
+          setDataError('Data Supabase gagal dimuat. Periksa koneksi, tabel, dan RLS, lalu coba lagi.');
+          setSyncStatus('error');
+          return;
+        }
+
+        if (data && !isSharedAppData(data.data)) {
+          console.error('Supabase shared app data has an invalid structure');
+          setDataError('Format data Supabase tidak sesuai. Periksa isi tabel marketing_app_state.');
+          setSyncStatus('error');
+          return;
+        }
+
+        const sharedData = data?.data;
+        setActivities(sharedData?.activities ?? []);
+        setWorkshops(sharedData?.workshops ?? []);
+        setEvaluations(sharedData?.evaluations ?? []);
+        setSocialAccounts(sharedData?.socialAccounts ?? []);
+        setDataReady(true);
+        setSyncStatus('saved');
+      } catch (error) {
+        if (!active) return;
+        console.error('Failed to load shared app data from Supabase', error);
+        setDataError('Data Supabase gagal dimuat. Periksa koneksi, tabel, dan RLS, lalu coba lagi.');
+        setSyncStatus('error');
+      }
+    };
+
+    void loadSharedData();
+
+    return () => {
+      active = false;
+    };
+  }, [authUser?.id, reloadDataKey]);
+
+  useEffect(() => {
+    if (!supabase || !authUser || !dataReady) return;
+    const client = supabase;
+
+    const saveTimer = window.setTimeout(async () => {
+      setSyncStatus('saving');
+      try {
+        const { error } = await client.from('marketing_app_state').upsert({
+          id: 'shared',
+          data: { activities, workshops, evaluations, socialAccounts },
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        setSyncStatus('saved');
+      } catch (error) {
+        console.error('Failed to save shared app data to Supabase', error);
+        setSyncStatus('error');
+        showToast('Perubahan gagal disimpan ke Supabase. Periksa koneksi lalu coba lagi.');
+      }
+    }, 400);
+
+    return () => window.clearTimeout(saveTimer);
+  }, [authUser?.id, dataReady, activities, workshops, evaluations, socialAccounts]);
 
   // Modal States
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
@@ -211,6 +299,23 @@ export default function App() {
     }
   };
 
+  const handleAddSocialAccount = (account: Omit<SocialAccount, 'id'>) => {
+    setSocialAccounts((prev) => [{ ...account, id: `social-${Date.now()}` }, ...prev]);
+    showToast(`Akun ${account.platform} berhasil ditambahkan.`);
+  };
+
+  const handleUpdateSocialAccount = (account: SocialAccount) => {
+    setSocialAccounts((prev) =>
+      prev.map((savedAccount) => (savedAccount.id === account.id ? account : savedAccount))
+    );
+    showToast(`Akun ${account.platform} berhasil diperbarui.`);
+  };
+
+  const handleDeleteSocialAccount = (account: SocialAccount) => {
+    setSocialAccounts((prev) => prev.filter((savedAccount) => savedAccount.id !== account.id));
+    showToast(`Akun ${account.platform} berhasil dihapus.`);
+  };
+
   // Weekly Evaluation Handlers
   const handleUpdateEvaluation = (updated: WeeklyEvaluation) => {
     setEvaluations((prev) =>
@@ -219,21 +324,31 @@ export default function App() {
     showToast(`Catatan evaluasi "${updated.title}" berhasil disimpan.`);
   };
 
-  // Reset to initial seed data
+  const handleAddEvaluation = (evaluation: Omit<WeeklyEvaluation, 'id'>) => {
+    setEvaluations((prev) => [{ ...evaluation, id: `eval-${Date.now()}` }, ...prev]);
+    showToast(`Catatan evaluasi "${evaluation.title}" berhasil ditambahkan.`);
+  };
+
   const handleResetData = () => {
     if (
       window.confirm(
-        'Apakah Anda yakin ingin mereset seluruh timeline kegiatan marketing ke data awal 22 agenda bawaan?'
+        'Hapus seluruh data kegiatan, target bengkel, evaluasi, dan catatan sosmed yang tersimpan? Tindakan ini tidak dapat dibatalkan.'
       )
     ) {
-      setActivities(INITIAL_ACTIVITIES);
-      setWorkshops(INITIAL_WORKSHOPS);
-      setEvaluations(INITIAL_EVALUATIONS);
-      localStorage.removeItem('bengkelin_activities_v1');
-      localStorage.removeItem('bengkelin_workshops_v1');
-      localStorage.removeItem('bengkelin_workshops_v2');
-      localStorage.removeItem('bengkelin_evaluations_v1');
-      showToast('Seluruh data berhasil direset ke jadwal default 20 Okt – 18 Nov 2026.');
+      setActivities([]);
+      setWorkshops([]);
+      setEvaluations([]);
+      setSocialAccounts([]);
+      showToast('Seluruh data berhasil dihapus.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Supabase sign-out failed', error);
+      showToast('Gagal keluar. Silakan coba lagi.');
     }
   };
 
@@ -242,7 +357,48 @@ export default function App() {
     window.print();
   };
 
-  const completedActivitiesCount = activities.filter((a) => a.status === 'Selesai').length;
+  if (!isSupabaseConfigured) {
+    return <SupabaseSetupView />;
+  }
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Memeriksa sesi login...</div>;
+  }
+
+  if (!authUser) {
+    return <LoginView />;
+  }
+
+  if (dataError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <section className="w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">Data belum dapat dibuka</h1>
+          <p role="alert" className="text-sm text-red-700">{dataError}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setReloadDataKey((value) => value + 1)}
+              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+            >
+              Coba lagi
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Keluar
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!dataReady) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Memuat data tim dari Supabase...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col antialiased">
@@ -255,8 +411,6 @@ export default function App() {
           setCollapsed={setSidebarCollapsed}
           mobileOpen={mobileMenuOpen}
           setMobileOpen={setMobileMenuOpen}
-          activityCount={activities.length}
-          completedCount={completedActivitiesCount}
         />
 
         {/* Main Content Viewport */}
@@ -264,42 +418,26 @@ export default function App() {
           {/* Header */}
           <Header
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
-            onOpenAddModal={() => handleOpenAddModal()}
-            onExportPdf={handleExportPdf}
-            onResetData={handleResetData}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
+            userEmail={authUser.email ?? 'Akun tim'}
+            onSignOut={handleSignOut}
+            syncStatus={syncStatus}
           />
 
           {/* Main Views Container */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
             {/* View Switcher based on currentTab */}
-            {currentTab === 'dashboard' && (
-              <DashboardOverview
-                activities={activities}
-                workshops={workshops}
-                evaluations={evaluations}
-                onSelectActivity={handleOpenViewModal}
-                onNavigateTab={(tab) => setCurrentTab(tab)}
-              />
-            )}
-
             {currentTab === 'timeline' && (
               <TimelineTable
                 activities={activities}
                 searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                onAddActivity={() => handleOpenAddModal()}
+                onExportPdf={handleExportPdf}
+                onResetData={handleResetData}
                 onSelectActivity={handleOpenViewModal}
                 onEditActivity={handleOpenEditModal}
                 onDeleteActivity={handleOpenDeleteModal}
                 onUpdateStatus={handleUpdateStatus}
-              />
-            )}
-
-            {currentTab === 'calendar' && (
-              <CalendarView
-                activities={activities}
-                onSelectActivity={handleOpenViewModal}
-                onOpenAddModalWithDate={(dateStr) => handleOpenAddModal(dateStr)}
               />
             )}
 
@@ -316,7 +454,18 @@ export default function App() {
             {currentTab === 'evaluations' && (
               <WeeklyEvaluationView
                 evaluations={evaluations}
+                onAddEvaluation={handleAddEvaluation}
                 onUpdateEvaluation={handleUpdateEvaluation}
+              />
+            )}
+
+            {currentTab === 'social-accounts' && (
+              <SocialAccountsView
+                accounts={socialAccounts}
+                onAddAccount={handleAddSocialAccount}
+                onUpdateAccount={handleUpdateSocialAccount}
+                onDeleteAccount={handleDeleteSocialAccount}
+                onNotify={showToast}
               />
             )}
           </main>
@@ -332,7 +481,7 @@ export default function App() {
                 BENGKELIN — TIMELINE MARKETING BULANAN
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Perencanaan &amp; Pemantauan Kegiatan Promosi Periode 20 Oktober – 18 November 2026
+                Perencanaan &amp; Pemantauan Kegiatan Promosi
               </p>
             </div>
             <div className="text-right text-xs text-gray-500 font-mono">
@@ -340,23 +489,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200 text-xs">
-            <div>
-              <span className="text-gray-500 block">Total Kegiatan:</span>
-              <strong className="text-sm">{activities.length} Agenda</strong>
-            </div>
-            <div>
-              <span className="text-gray-500 block">Target Video:</span>
-              <strong className="text-sm">Maks. 66 Video</strong>
-            </div>
-            <div>
-              <span className="text-gray-500 block">Target Bengkel:</span>
-              <strong className="text-sm">20-30 Petakan / 10-15 Kunjungi</strong>
-            </div>
-            <div>
-              <span className="text-gray-500 block">Target Webinar:</span>
-              <strong className="text-sm">1 Acara (9 Nov 2026)</strong>
-            </div>
+          <div className="mt-4 border-t border-gray-200 pt-4 text-xs">
+            <span className="text-gray-500">Total Kegiatan:</span>{' '}
+            <strong className="text-sm">{activities.length} Agenda</strong>
           </div>
         </div>
 

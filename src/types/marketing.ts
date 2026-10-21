@@ -58,3 +58,10 @@ export interface WeeklyEvaluation {
   additionalNotes: string;
   status: 'Draft' | 'Final';
 }
+
+export interface SocialAccount {
+  id: string;
+  platform: string;
+  accountName: string;
+  password: string;
+}

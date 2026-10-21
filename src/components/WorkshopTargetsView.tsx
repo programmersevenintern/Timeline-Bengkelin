@@ -149,35 +149,31 @@ export const WorkshopTargetsView: React.FC<WorkshopTargetsViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs">
           <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Target Pemetaan
+            Total Target Bengkel
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
               {totalMapped}
             </span>
-            <span className="text-xs text-slate-500 font-medium">/ 20–30 bengkel</span>
+            <span className="text-xs text-slate-500 font-medium">bengkel</span>
           </div>
           <div className={`mt-2 text-xs font-medium flex items-center gap-1 ${totalMapped >= 20 ? 'text-emerald-600' : 'text-slate-500'}`}>
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>
-              {totalMapped === 0
-                ? 'Belum ada target bengkel'
-                : totalMapped < 20
-                  ? `Tambahkan ${20 - totalMapped} bengkel untuk kuota minimal`
-                  : 'Target kuota minimal terpenuhi'}
+              {totalMapped === 0 ? 'Belum ada target bengkel' : `${totalMapped} target tersimpan`}
             </span>
           </div>
         </div>
 
         <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs">
           <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Target Kunjungan
+            Bengkel Dikunjungi
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
               {visitedCount}
             </span>
-            <span className="text-xs text-slate-500 font-medium">/ 10–15 bengkel</span>
+            <span className="text-xs text-slate-500 font-medium">bengkel</span>
           </div>
           <div className="mt-2 text-xs text-slate-600">
             +{scheduledCount} kunjungan terjadwal

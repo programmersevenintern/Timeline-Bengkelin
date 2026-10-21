@@ -1,17 +1,20 @@
 import React from 'react';
 import {
-  LayoutDashboard,
   CalendarRange,
-  Calendar,
   Wrench,
   ClipboardCheck,
+  LockKeyhole,
   ChevronLeft,
   ChevronRight,
   X,
   Sparkles,
 } from 'lucide-react';
 
-export type NavTab = 'dashboard' | 'timeline' | 'calendar' | 'workshops' | 'evaluations';
+export type NavTab =
+  | 'timeline'
+  | 'workshops'
+  | 'evaluations'
+  | 'social-accounts';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -20,8 +23,6 @@ interface SidebarProps {
   setCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
-  activityCount: number;
-  completedCount: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,39 +32,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed,
   mobileOpen,
   setMobileOpen,
-  activityCount,
-  completedCount,
 }) => {
   const navItems = [
-    {
-      id: 'dashboard' as NavTab,
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      badge: null,
-    },
     {
       id: 'timeline' as NavTab,
       label: 'Timeline Kegiatan',
       icon: CalendarRange,
-      badge: `${activityCount}`,
-    },
-    {
-      id: 'calendar' as NavTab,
-      label: 'Kalender',
-      icon: Calendar,
       badge: null,
     },
     {
       id: 'workshops' as NavTab,
       label: 'Daftar Target Bengkel',
       icon: Wrench,
-      badge: '25',
+      badge: null,
     },
     {
       id: 'evaluations' as NavTab,
       label: 'Evaluasi Mingguan',
       icon: ClipboardCheck,
-      badge: '4 Jum',
+      badge: null,
+    },
+    {
+      id: 'social-accounts' as NavTab,
+      label: 'Catatan Sosmed',
+      icon: LockKeyhole,
+      badge: null,
     },
   ];
 
@@ -71,8 +64,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setCurrentTab(tab);
     setMobileOpen(false);
   };
-
-  const progressPercent = activityCount > 0 ? Math.round((completedCount / activityCount) * 100) : 0;
 
   return (
     <>
@@ -168,27 +159,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </div>
-
-        {/* Progress & Quick Info Card */}
-        {!collapsed && (
-          <div className="p-4 mx-3 mb-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-slate-700">Progres Timeline</span>
-              <span className="text-xs font-mono font-bold text-rose-600 tabular-nums">
-                {progressPercent}%
-              </span>
-            </div>
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rose-600 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-              <span className="font-semibold text-slate-700">{completedCount}</span> dari {activityCount} kegiatan selesai
-            </p>
-          </div>
-        )}
 
         {/* Desktop Collapse Toggle */}
         <div className="hidden lg:flex items-center justify-between p-3 border-t border-slate-200">

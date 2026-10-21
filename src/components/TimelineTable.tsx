@@ -6,10 +6,10 @@ import {
   Trash2,
   ChevronDown,
   RotateCcw,
-  Sparkles,
-  Calendar,
-  Layers,
   CheckCircle2,
+  Plus,
+  Search,
+  Printer,
 } from 'lucide-react';
 import { ActivityItem, ActivityCategory, ActivityStatus } from '../types/marketing';
 import { formatToIndonesianDate } from '../utils/dateUtils';
@@ -18,6 +18,10 @@ import { getCategoryBadgeClass, getStatusBadgeClass } from '../utils/styleHelper
 interface TimelineTableProps {
   activities: ActivityItem[];
   searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  onAddActivity: () => void;
+  onExportPdf: () => void;
+  onResetData: () => void;
   onSelectActivity: (activity: ActivityItem) => void;
   onEditActivity: (activity: ActivityItem) => void;
   onDeleteActivity: (activity: ActivityItem) => void;
@@ -27,6 +31,10 @@ interface TimelineTableProps {
 export const TimelineTable: React.FC<TimelineTableProps> = ({
   activities,
   searchTerm,
+  setSearchTerm,
+  onAddActivity,
+  onExportPdf,
+  onResetData,
   onSelectActivity,
   onEditActivity,
   onDeleteActivity,
@@ -53,6 +61,8 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
     'Ditunda',
   ];
 
+  const availableMonths = [...new Set(activities.map((activity) => activity.date.slice(0, 7)))].sort();
+
   // Filtering logic
   const filteredActivities = useMemo(() => {
     return activities.filter((act) => {
@@ -71,7 +81,7 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
 
       // Month filter
       if (selectedMonth !== 'all') {
-        const actMonth = act.date.slice(0, 7); // '2026-10' or '2026-11'
+        const actMonth = act.date.slice(0, 7);
         if (actMonth !== selectedMonth) {
           return false;
         }
@@ -102,6 +112,41 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Timeline Kegiatan</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Atur jadwal dan pantau progres kegiatan marketing.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onResetData}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Hapus Semua Data
+          </button>
+          <button
+            type="button"
+            onClick={onExportPdf}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <Printer className="h-4 w-4" />
+            Export PDF
+          </button>
+          <button
+            type="button"
+            onClick={onAddActivity}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-rose-700"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah Kegiatan
+          </button>
+        </div>
+      </div>
+
       {/* Filter Bar */}
       <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -126,7 +171,22 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
         </div>
 
         {/* Filter Dropdowns Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label className="block text-[11px] font-medium text-slate-500 mb-1">
+              Cari kegiatan
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Nama, detail, target..."
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-700 focus:border-rose-500 focus:bg-white focus:outline-hidden"
+              />
+            </div>
+          </div>
           {/* Bulan */}
           <div>
             <label className="block text-[11px] font-medium text-slate-500 mb-1">
@@ -137,9 +197,19 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 focus:outline-hidden focus:border-rose-500 focus:bg-white"
             >
-              <option value="all">Semua Bulan (Okt &amp; Nov)</option>
-              <option value="2026-10">Oktober 2026</option>
-              <option value="2026-11">November 2026</option>
+              <option value="all">Semua Bulan</option>
+              {availableMonths.map((month) => {
+                const [year, monthNumber] = month.split('-').map(Number);
+                const label = new Date(year, monthNumber - 1).toLocaleDateString('id-ID', {
+                  month: 'long',
+                  year: 'numeric',
+                });
+                return (
+                  <option key={month} value={month}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -204,15 +274,23 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">
                     <div className="max-w-xs mx-auto space-y-2">
-                      <p className="font-medium text-slate-700">Tidak ada kegiatan yang cocok</p>
-                      <p className="text-xs">Coba sesuaikan kata kunci pencarian atau reset filter di atas.</p>
-                      <button
-                        type="button"
-                        onClick={handleResetFilters}
-                        className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 font-semibold border border-rose-200 rounded-lg hover:bg-rose-50"
-                      >
-                        Reset Semua Filter
-                      </button>
+                      <p className="font-medium text-slate-700">
+                        {activities.length === 0 ? 'Belum ada kegiatan' : 'Tidak ada kegiatan yang cocok'}
+                      </p>
+                      <p className="text-xs">
+                        {activities.length === 0
+                          ? 'Pilih Tambah Kegiatan untuk mulai mengisi timeline.'
+                          : 'Coba ubah kata kunci pencarian atau filter yang dipilih.'}
+                      </p>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 font-semibold border border-rose-200 rounded-lg hover:bg-rose-50"
+                        >
+                          Reset Semua Filter
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -342,8 +420,15 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-3">
         {filteredActivities.length === 0 ? (
-          <div className="p-8 bg-white border border-slate-200 rounded-xl text-center text-slate-500 text-xs">
-            Tidak ada kegiatan yang sesuai filter.
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">
+            <p className="font-semibold text-slate-700">
+              {activities.length === 0 ? 'Belum ada kegiatan' : 'Tidak ada kegiatan yang cocok'}
+            </p>
+            <p className="mt-1">
+              {activities.length === 0
+                ? 'Pilih Tambah Kegiatan untuk mulai mengisi timeline.'
+                : 'Coba ubah kata kunci pencarian atau filter.'}
+            </p>
           </div>
         ) : (
           filteredActivities.map((act, index) => (

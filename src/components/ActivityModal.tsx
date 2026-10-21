@@ -25,6 +25,12 @@ interface ActivityModalProps {
   onDelete?: (activity: ActivityItem) => void;
 }
 
+const getTodayDate = () => {
+  const today = new Date();
+  const offset = today.getTimezoneOffset() * 60_000;
+  return new Date(today.getTime() - offset).toISOString().slice(0, 10);
+};
+
 export const ActivityModal: React.FC<ActivityModalProps> = ({
   isOpen,
   onClose,
@@ -37,7 +43,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
 
   // Form states
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState('2026-10-20');
+  const [date, setDate] = useState(getTodayDate);
   const [category, setCategory] = useState<ActivityCategory>('Persiapan');
   const [activityDetail, setActivityDetail] = useState('');
   const [targetOutput, setTargetOutput] = useState('');
@@ -81,7 +87,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
     } else {
       // Add mode default
       setTitle('');
-      setDate('2026-10-20');
+      setDate(getTodayDate());
       setCategory('Persiapan');
       setActivityDetail('');
       setTargetOutput('');
@@ -517,7 +523,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
                     required
                     value={targetOutput}
                     onChange={(e) => setTargetOutput(e.target.value)}
-                    placeholder="Contoh: 3 video / Daftar 20–30 bengkel"
+                    placeholder="Contoh: Target konten mingguan"
                     className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-rose-500"
                   />
                 </div>
