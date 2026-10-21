@@ -14,6 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Env: copy `.env.example` to `.env` (it already holds the project's `VITE_SUPABASE_URL` and public anon key). Never put the Postgres connection string or other server secrets there; the app doesn't need them. Without the two vars the app renders `SupabaseSetupView` instead of the dashboard (`src/lib/supabase.ts` validates them).
 
+Deploy: Coolify builds the root `Dockerfile` (Node build, nginx serves `dist/`) from `main` and serves https://timeline.bengkelinapp.com. `VITE_*` vars are build args, so changing them needs a rebuild. Pushing does not auto-deploy.
+
 ## Architecture
 
 - **Single shared document.** All data lives in one row of `public.marketing_app_state` (`id = 'shared'`, `data jsonb` holding `activities`, `workshops`, `evaluations`, `socialAccounts`). See `supabase/schema.sql` for the table and RLS (authenticated users only; `anon` revoked).
