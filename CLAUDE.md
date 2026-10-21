@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Dashboard Timeline Marketing Bengkelin": a React 19 + Vite + Tailwind v4 SPA for the Bengkelin marketing team to plan and track a campaign (activities timeline, target workshops, weekly evaluations, social media account notes). Backend is Supabase only (auth + one table); there is no server code. Scaffolded from Google AI Studio, which explains `metadata.json`, the `DISABLE_HMR` switch in `vite.config.ts`, and the unused `@google/genai` / `express` / `dotenv` dependencies.
+"Dashboard Timeline Marketing Bengkelin": a React 19 + Vite + Tailwind v4 SPA for the Bengkelin marketing team to plan and track a campaign (activities timeline, target workshops, weekly evaluations, social media account notes). Backend is Supabase only (auth + one table); there is no server code. Scaffolded from Google AI Studio, which explains `metadata.json` and the `DISABLE_HMR` switch in `vite.config.ts`.
 
 ## Commands
 
